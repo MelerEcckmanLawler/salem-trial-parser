@@ -1,12 +1,29 @@
 const cheerio = require('cheerio')
 const fs = require('fs').promises
 
-parseReport(2505930)
 //2501835
 //2504760
 //2504771
 //2505868
 //2505930
+parseReport(2501835).then((report) => {
+  for (let k in report.players) {
+    /*
+    will log each player twice because
+    they are indexed by both account name
+    and match name
+    */
+    console.log(report.players[k])
+    console.log()
+  }
+  for (let i = 0; i < report.entries.length; i++) {
+    if (report.entries[i].attribs) {
+      console.warn('Need to make a restructure function for the following entry:')
+    }
+    console.log(report.entries[i])
+    console.log()
+  }
+})
 
 async function reportToString(reportId) {
   let HTML = await fs.readFile(`${reportId}.html`, `utf8`)
@@ -48,40 +65,36 @@ function getSpans(HTML) {
 }
 
 function spansToArrayOfEntries(spans, players) {
-  for (let k in players) {
-    console.log(players[k].name, players[k].role)
-  }
   let entries = []
   for (let i = 0; i < spans.length; i++) {
-    sanitizeTitle(spans[i])
-    sanitizeClass(spans[i])
-    restructureClass(spans[i])
-    restructureSystemSpan(spans[i])
-    restructureDayChatSpan(spans[i], players)
-    restructureOtherChatSpan(spans[i], players)
-    restructureWhisperSpan(spans[i], players)
-    restructureLastWillAndDeathNote(spans[i], players)
-    restructureTitle(spans[i])
-    restructureHasBeenKilled(spans[i], players)
-    restructureWasAttackedBy(spans[i], players)
-    restructureVotes(spans[i], players)
-    restructureHasBeenKilled(spans[i], players)
-    restructureHasBeenLynched(spans[i], players)
-    restructureAttackedByAVeteran(spans[i], players)
-    restructureTransportation(spans[i], players)
-    restructureHasLeftTheGame(spans[i], players)
-    restructureDecidedToExecute(spans[i], players)
-    restructureInvestigated(spans[i], players)
-    restructureWitched(spans[i], players)
-    restructureSheriffChecked(spans[i], players)
-    restructureSerialKillerKilledJailorWhileInJail(spans[i], players)
-    restructureResurrection(spans[i], players)
-    restructureHasForgedWill(spans[i], players)
-    //if (spans[i].attribs)
-    //if (spans[i].attribs.class.length == 1)
-    //if (spans[i].attribs.class[0] == 'notice')
-    { console.log(spans[i]); console.log() }
+    let span = spans[i]
+    sanitizeTitle(span)
+    sanitizeClass(span)
+    restructureClass(span)
+    restructureSystemSpan(span)
+    restructureDayChatSpan(span, players)
+    restructureOtherChatSpan(span, players)
+    restructureWhisperSpan(span, players)
+    restructureLastWillAndDeathNote(span, players)
+    restructureTitle(span)
+    restructureHasBeenKilled(span, players)
+    restructureWasAttackedBy(span, players)
+    restructureVotes(span, players)
+    restructureHasBeenKilled(span, players)
+    restructureHasBeenLynched(span, players)
+    restructureAttackedByAVeteran(span, players)
+    restructureTransportation(span, players)
+    restructureHasLeftTheGame(span, players)
+    restructureDecidedToExecute(span, players)
+    restructureInvestigated(span, players)
+    restructureWitched(span, players)
+    restructureSheriffChecked(span, players)
+    restructureSerialKillerKilledJailorWhileInJail(span, players)
+    restructureResurrection(span, players)
+    restructureHasForgedWill(span, players)
+    entries.push(span)
   }
+  return entries
 }
 
 function restructureHasForgedWill(span, players) {
@@ -560,5 +573,7 @@ async function parseReport(reportId) {
   let HTML = await reportToString(reportId)
   let players = playerListFromHTML(HTML) // a player can be accessed by account or name
   let spans = getSpans(HTML)
-  spans = spansToArrayOfEntries(spans, players)
+  let entries = spansToArrayOfEntries(spans, players)
+  let match = { players: players, entries: entries }
+  return match
 }
