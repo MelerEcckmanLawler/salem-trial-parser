@@ -1,22 +1,22 @@
 const cheerio = require('cheerio')
 const fs = require('fs').promises
 
-parseReport(2505949).then((report) => {
+parseReport(2500326).then((report) => {
   for (let k in report.players) {
     /*
     will log each player twice because
     they are indexed by both account name
-    and match name
+    and in-game name
     */
     console.log(report.players[k])
     console.log()
   }
   for (let i = 0; i < report.entries.length; i++) {
-    if (report.entries[i].attribs) {
-      console.warn('Need to make a restructure function for the following entry:')
-    }
     console.log(report.entries[i])
     console.log()
+    if (report.entries[i].attribs) {
+      console.error('Need to make a restructure function for this entry!')
+    }
   }
 })
 
