@@ -1,0 +1,28 @@
+{
+  "name": "salem-trial-parser",
+  "version": "1.0.2",
+  "description": "Turn a Town of Salem Trial System report .HTML file into a more manageable form for data analysis.",
+  "main": "index.js",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "town",
+    "of",
+    "salem"
+  ],
+  "author": "MelerEcckmanLawler",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MelerEcckmanLawler/salem-trial-parser.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MelerEcckmanLawler/salem-trial-parser/issues"
+  },
+  "homepage": "https://github.com/MelerEcckmanLawler/salem-trial-parser#readme"
+}

@@ -1,29 +1,17 @@
 const cheerio = require('cheerio')
 const fs = require('fs').promises
 
-//need report file in same directory already downloaded
-//e.g. 2500326.html
-parseReport(2500326).then((report) => {
-  for (let k in report.players) {
-    /*
-    will log each player twice because
-    they are indexed by both account name
-    and in-game name
-    */
-    console.log(report.players[k])
-    console.log()
-  }
-  for (let i = 0; i < report.entries.length; i++) {
-    console.log(report.entries[i])
-    console.log()
-    if (report.entries[i].attribs) {
-      console.error('Need to make a restructure function for this entry!')
-    }
-  }
-})
+module.exports = async function parseReport(filename) {
+  let HTML = await reportToString(filename)
+  let players = playerListFromHTML(HTML)
+  let spans = getSpans(HTML)
+  let entries = spansToArrayOfEntries(spans, players)
+  let match = { players: players, entries: entries }
+  return match
+}
 
-async function reportToString(reportId) {
-  let HTML = await fs.readFile(`${reportId}.html`, `utf8`)
+async function reportToString(filename) {
+  let HTML = await fs.readFile(filename, `utf8`)
   return HTML
 }
 
@@ -580,11 +568,3 @@ function restructureClass(span) {
   }
 }
 
-async function parseReport(reportId) {
-  let HTML = await reportToString(reportId)
-  let players = playerListFromHTML(HTML) // a player can be accessed by account or name
-  let spans = getSpans(HTML)
-  let entries = spansToArrayOfEntries(spans, players)
-  let match = { players: players, entries: entries }
-  return match
-}
