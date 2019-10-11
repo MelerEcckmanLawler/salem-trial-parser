@@ -1,6 +1,8 @@
 const cheerio = require('cheerio')
 const fs = require('fs').promises
 
+//need report file in same directory already downloaded
+//e.g. 2500326.html
 parseReport(2500326).then((report) => {
   for (let k in report.players) {
     /*
