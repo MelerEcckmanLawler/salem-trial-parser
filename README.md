@@ -1,4 +1,7 @@
 # salem-trial-parser
+```
+npm i salem-trial-parser
+```
 
 ```
 const parseReport = require('salem-trial-parser')
