@@ -3,6 +3,10 @@ const fs = require('fs').promises
 
 module.exports = async function parseReport(filename) {
   let HTML = await reportToString(filename)
+  if (HTML == 'Could not find any reports with that ID.') {
+    console.log('Could not find any reports with that ID.')
+    return
+  }
   let players = playerListFromHTML(HTML)
   let spans = getSpans(HTML)
   let entries = spansToArrayOfEntries(spans, players)
@@ -483,7 +487,13 @@ function restructureDayChatSpan(span, players) {
       message = message.slice(index + 2)
 
       let account = span.attribs.class[0]
-      let name = players[account].name
+      
+      let name
+      if (span.attribs.class[1] == 'lobby') {
+        name = span.attribs.class[0]
+      } else {
+        name = players[account].name
+      }
 
       delete span.data
       delete span.attribs
