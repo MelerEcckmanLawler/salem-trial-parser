@@ -1,15 +1,12 @@
 # salem-trial-parser
 
+```
 const parseReport = require('salem-trial-parser')
 
-let filename = `report.html`
-
+let filename = 'report.html'
 parseReport(filename).then((report) => {
-    console.log(report.players)
-    //players will be logged twice
-    //because
-    //they are indexed under both account name and in-game name for convenience
-    console.log(report.entries)
-    //each entry is a game message
-    //e.g. a chat message, a whisper, a notification that someone was killed or lynched, an ability was used, etc.
+  console.log(report.players)
+  //each player is indexed twice, under their account name and in-game name
+  console.log(report.entries)
 })
+```
