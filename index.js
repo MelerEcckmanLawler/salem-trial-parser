@@ -527,8 +527,8 @@ function restructureSystemSpan(span) {
     if (span.data.startsWith('Day ')) {
       let index = 'Day '.length
       let number = span.data.slice(index)
-      number = Number(number)
-      if (typeof number == 'number') {
+      if (/^\d+$/.test(number)) {
+        number = Number(number)
         delete span.data
         delete span.attribs
         span.type = 'DAY'
@@ -539,8 +539,8 @@ function restructureSystemSpan(span) {
     if (span.data.startsWith('Night ')) {
       let index = 'Night '.length
       let number = span.data.slice(index)
-      number = Number(number)
-      if (typeof number == 'number') {
+      if (/^\d+$/.test(number)) {
+        number = Number(number)
         delete span.data
         delete span.attribs
         span.type = 'NIGHT'
