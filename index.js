@@ -1,12 +1,7 @@
 const cheerio = require('cheerio')
 const fs = require('fs').promises
 
-//2501835
-//2504760
-//2504771
-//2505868
-//2505930
-parseReport(2501835).then((report) => {
+parseReport(2505949).then((report) => {
   for (let k in report.players) {
     /*
     will log each player twice because
@@ -58,8 +53,22 @@ function getSpans(HTML) {
   let spanParents = $('#reportContent').find('span')
   let spans = []
   for (let i = 0; i < spanParents.length; i++) {
-    spans[i] = { data: spanParents[i].children[0].data }
-    spans[i].attribs = spanParents[i].attribs
+    let span
+    let spanParent = spanParents[i]
+
+    if (spanParent.children.length == 0) {
+      continue
+    }
+
+    if (spanParent.attribs) {
+      if (spanParent.attribs.title == '') {
+        continue
+      }
+    }
+
+    span = { data: spanParent.children[0].data }
+    span.attribs = spanParent.attribs
+    spans.push(span)
   }
   return spans
 }
