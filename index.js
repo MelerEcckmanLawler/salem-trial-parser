@@ -166,7 +166,7 @@ function restructureStakedByAVampireHunter(span, players) {
 function restructureVisitedAVampireHunter(span, players) {
   if (span.attribs) {
     if (span.attribs.class) {
-      if (span.attribs.class.length == 1) {
+      if ((span.attribs.class.length == 1) || (span.attribs.class.length == 3)) {
         if (span.attribs.class[0] == 'notice')
           if (span.data.includes(' visited a VampireHunter.')) {
             let data = span.data
@@ -227,7 +227,6 @@ function restructureIgnitedByArsonist(span, players) {
 function restructureDiedFromGuilt(span, players) {
   if (span.attribs) {
     if (span.attribs.class) {
-      if (span.attribs.class.length == 1) {
         if (span.attribs.class[0] == 'notice')
               if (span.data.endsWith(' died from guilt over shooting a Town member.')) {
                 let data = span.data
@@ -239,7 +238,7 @@ function restructureDiedFromGuilt(span, players) {
                 span.name = name
               }
             
-      }
+      
     }
   }
 }
@@ -247,7 +246,7 @@ function restructureDiedFromGuilt(span, players) {
 function restructureDiedGuardingSomeone(span, players) {
   if (span.attribs) {
     if (span.attribs.class) {
-      if (span.attribs.class.length == 1) {
+      if ((span.attribs.class.length == 1) || (span.attribs.class.length == 3)) {
         if (span.attribs.class[0] == 'notice') {
           if (span.data.endsWith(' died guarding someone.')) {
             let data = span.data
@@ -416,7 +415,8 @@ function restructureInvestigated(span, players) {
 function restructureDecidedToExecute(span, players) {
   if (span.attribs) {
     if (span.attribs.class.length == 3 || span.attribs.class.length == 4) {
-      if (span.attribs.class[span.attribs.class.length - 1] == 'jail') {
+      if ((span.attribs.class[span.attribs.class.length - 1] == 'jail') ||
+      (span.attribs.class[span.attribs.class.length - 1] == 'death'))  {
         if (span.data.includes(' decided to execute ')) {
           let data = span.data
           let index = data.indexOf(' decided to execute ')
@@ -716,6 +716,7 @@ function restructureSystemSpan(span) {
     case 'GameOver':
     case 'Town has won.':
     case 'Mafia has won.':
+    case 'Neutrals has won.':
     case 'Coven has won.':
     case 'Arsonist has won.':
     case 'Werewolf has won.':
@@ -727,6 +728,7 @@ function restructureSystemSpan(span) {
     case 'Witch has won.':
     case 'Juggernaut has won.':
     case 'Executioner has won.':
+    case 'Survivor has won.':
     case 'Stalemate.':
     case 'Draw.':
     case 'End of Report':
