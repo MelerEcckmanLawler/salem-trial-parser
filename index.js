@@ -11,6 +11,15 @@ module.exports = async function parseReport(filename) {
   let spans = getSpans(HTML)
   let entries = spansToArrayOfEntries(spans, players)
   let match = { players: players, entries: entries }
+
+  for (let i = 0; i < match.entries.length; i++) {
+    if (match.entries[i].attribs) {
+      console.log(filename)
+      console.log('\x1b[31m', 'RESTRUCTURE FUNCTION NEEDED FOR THE FOLLOWING ENTRY TYPE:', '\x1b[0m')
+      console.log(match.entries[i])
+    }
+  }
+
   return match
 }
 
@@ -71,6 +80,7 @@ function spansToArrayOfEntries(spans, players) {
   let entries = []
   for (let i = 0; i < spans.length; i++) {
     let span = spans[i]
+    removeNewLines(span)
     sanitizeTitle(span)
     sanitizeClass(span)
     restructureClass(span)
@@ -95,23 +105,195 @@ function spansToArrayOfEntries(spans, players) {
     restructureSerialKillerKilledJailorWhileInJail(span, players)
     restructureResurrection(span, players)
     restructureHasForgedWill(span, players)
+    restructureDiedFromHeartBreak(span, players)
+    restructureDiedGuardingSomeone(span, players)
+    restructureDiedFromGuilt(span, players)
+    restructureIgnitedByArsonist(span, players)
+    restructureAmnesiacRemembered(span, players)
+    restructureVisitedAVampireHunter(span, players)
+    restructureStakedByAVampireHunter(span, players)
+    restructureConverted(span, players)
     entries.push(span)
   }
   return entries
+}
+
+function removeNewLines(span) {
+  if (span.data) {
+    span.data = span.data.replace(/\n/g, ' ')
+  }
+}
+
+function restructureConverted(span, players) {
+  if (span.attribs) {
+    if (span.attribs.class) {
+      if (span.attribs.class.length == 3) {
+        if (span.attribs.class[0] == 'notice')
+        if (span.attribs.class[span.attribs.class.length - 1] == 'convert')
+          if (span.data.includes(' was converted from being a ')) {
+            let data = span.data
+            let index = data.indexOf(' was converted from being a ')
+            let name = data.slice(0, index)
+            delete span.data
+            delete span.attribs
+            span.type = 'CONVERTED'
+            span.name = name
+          }
+      }
+    }
+  }
+}
+
+function restructureStakedByAVampireHunter(span, players) {
+  if (span.attribs) {
+    if (span.attribs.class) {
+      if (span.attribs.class.length == 1) {
+        if (span.attribs.class[0] == 'notice')
+          if (span.data.includes(' was staked by a VampireHunter.')) {
+            let data = span.data
+            let index = data.indexOf(' was staked by a VampireHunter.')
+            let name = data.slice(0, index)
+            delete span.data
+            delete span.attribs
+            span.type = 'STAKED BY A VAMPIRE HUNTER'
+            span.name = name
+          }
+      }
+    }
+  }
+}
+
+function restructureVisitedAVampireHunter(span, players) {
+  if (span.attribs) {
+    if (span.attribs.class) {
+      if (span.attribs.class.length == 1) {
+        if (span.attribs.class[0] == 'notice')
+          if (span.data.includes(' visited a VampireHunter.')) {
+            let data = span.data
+            let index = data.indexOf(' visited a VampireHunter.')
+            let name = data.slice(0, index)
+            delete span.data
+            delete span.attribs
+            span.type = 'VISITED A VAMPIRE HUNTER'
+            span.name = name
+          }
+      }
+    }
+  }
+}
+
+function restructureAmnesiacRemembered(span, players) {
+  if (span.attribs) {
+    if (span.attribs.class) {
+      if (span.attribs.class.length == 1) {
+        if (span.attribs.class[0] == 'notice')
+          if (span.data.includes(' has remembered they were ')) {
+            let data = span.data
+            let index = data.indexOf(' has remembered they were ')
+            let name = data.slice(0, index)
+            let index2 = index + ' has remembered they were '.length
+            let role = data.slice(index2)
+            role = role.replace('.', '')
+            delete span.data
+            delete span.attribs
+            span.type = 'AMNESIAC REMEMBERED'
+            span.name = name
+            span.role = role
+          }
+      }
+    }
+  }
+}
+
+function restructureIgnitedByArsonist(span, players) {
+  if (span.attribs) {
+    if (span.attribs.class) {
+      if (span.attribs.class.length == 1) {
+        if (span.attribs.class[0] == 'notice')
+          if (span.data.endsWith(' was ignited by an Arsonist.')) {
+            let data = span.data
+            let index = data.indexOf(' was ignited by an Arsonist.')
+            let name = data.slice(0, index)
+            delete span.data
+            delete span.attribs
+            span.type = 'IGNITED BY ARSONIST'
+            span.name = name
+          }
+      }
+    }
+  }
+}
+
+function restructureDiedFromGuilt(span, players) {
+  if (span.attribs) {
+    if (span.attribs.class) {
+      if (span.attribs.class.length == 1) {
+        if (span.attribs.class[0] == 'notice')
+              if (span.data.endsWith(' died from guilt over shooting a Town member.')) {
+                let data = span.data
+                let index = data.indexOf(' died from guilt over shooting a Town member.')
+                let name = data.slice(0, index)
+                delete span.data
+                delete span.attribs
+                span.type = 'DIED FROM GUILT'
+                span.name = name
+              }
+            
+      }
+    }
+  }
+}
+
+function restructureDiedGuardingSomeone(span, players) {
+  if (span.attribs) {
+    if (span.attribs.class) {
+      if (span.attribs.class.length == 1) {
+        if (span.attribs.class[0] == 'notice') {
+          if (span.data.endsWith(' died guarding someone.')) {
+            let data = span.data
+            let index = data.indexOf(' died guarding someone.')
+            let name = data.slice(0, index)
+            delete span.data
+            delete span.attribs
+            span.type = 'DIED GUARDING SOMEONE'
+            span.name = name
+          }
+        }
+      }
+    }
+  }
+}
+
+function restructureDiedFromHeartBreak(span, players) {
+  if (span.attribs) {
+    if (span.attribs.class[0] == 'notice') {
+      if (span.data.endsWith(' died from heartbreak.')) {
+        let data = span.data
+        let index = data.indexOf(' died from heartbreak.')
+        let name = data.slice(0, index)
+        delete span.data
+        delete span.attribs
+        span.type = 'DIED FROM HEARTBREAK'
+        span.name = name
+      }
+    }
+  }
 }
 
 function restructureHasForgedWill(span, players) {
   if (span.attribs) {
     if (span.attribs.class.length == 1) {
       if (span.attribs.class[0] == 'notice') {
-        let data = span.data
-        let perpetrator = data.replace(' has forged the will.', '')
+        if (span.data.includes(' has forged the will.')) {
+          let data = span.data
+          let perpetrator = data.replace(' has forged the will.', '')
 
-        delete span.data
-        delete span.attribs
+          delete span.data
+          delete span.attribs
 
-        span.type = 'FORGERY'
-        span.perpetrator = perpetrator
+          span.type = 'FORGERY'
+          span.perpetrator = perpetrator
+        }
       }
     }
   }
@@ -119,8 +301,9 @@ function restructureHasForgedWill(span, players) {
 
 function restructureResurrection(span, players) {
   if (span.attribs) {
-    if (span.attribs.class.length == 3) {
-      if (span.attribs.class[0] == 'notice') {
+    if (span.attribs.class.length == 2 || span.attribs.class.length == 3) {
+      if (span.attribs.class[0] == 'notice')
+      if (span.attribs.class[span.attribs.class.length - 1] == 'revived'){
         if (span.data.endsWith(' has been resurrected.')) {
           let data = span.data
           let index = data.indexOf(' has been resurrected.')
@@ -159,9 +342,9 @@ function restructureSerialKillerKilledJailorWhileInJail(span, players) {
 
 function restructureSheriffChecked(span, players) {
   if (span.attribs) {
-    if (span.attribs.class.length == 3) {
+    if (span.attribs.class.length == 2 || span.attribs.class.length == 3) {
       if (span.attribs.class[0] == 'notice') {
-        if (span.attribs.class[2] == 'Sheriff') {
+        if (span.attribs.class[span.attribs.class.length - 1] == 'Sheriff') {
           if (span.data.includes(' checked ')) {
             let data = span.data
             let index = data.indexOf(' checked ')
@@ -184,9 +367,9 @@ function restructureSheriffChecked(span, players) {
 
 function restructureWitched(span, players) {
   if (span.attribs) {
-    if (span.attribs.class.length == 5) {
+    if (span.attribs.class.length == 4 || span.attribs.class.length == 5) {
       if (span.attribs.class[0] == 'notice') {
-        if (span.attribs.class[4] == 'control') {
+        if (span.attribs.class[span.attribs.class.length - 1] == 'control') {
           let data = span.data
           let target1
           let target2
@@ -212,7 +395,7 @@ function restructureWitched(span, players) {
 function restructureInvestigated(span, players) {
   if (span.attribs) {
     if (span.attribs.class[0] == 'notice') {
-      if (span.attribs.class[2] == 'Investigator') {
+      if (span.attribs.class[span.attribs.class.length - 1] == 'Investigator') {
         let data = span.data
         let index = data.indexOf(' investigated ')
         let name = data.slice(0, index)
@@ -232,8 +415,8 @@ function restructureInvestigated(span, players) {
 
 function restructureDecidedToExecute(span, players) {
   if (span.attribs) {
-    if (span.attribs.class.length == 4) {
-      if (span.attribs.class[3] == 'jail') {
+    if (span.attribs.class.length == 3 || span.attribs.class.length == 4) {
+      if (span.attribs.class[span.attribs.class.length - 1] == 'jail') {
         if (span.data.includes(' decided to execute ')) {
           let data = span.data
           let index = data.indexOf(' decided to execute ')
@@ -253,7 +436,8 @@ function restructureDecidedToExecute(span, players) {
 
 function restructureHasLeftTheGame(span, players) {
   if (span.attribs) {
-    if (span.attribs.class.length == 1) {
+    if (span.attribs.class)
+    if (span.attribs.class[0] == 'notice') {
       let data = span.data
       if (data.endsWith(' has left the game.')) {
         let name = data.replace(' has left the game.', '')
@@ -269,8 +453,8 @@ function restructureHasLeftTheGame(span, players) {
 
 function restructureTransportation(span, players) {
   if (span.attribs) {
-    if (span.attribs.class.length == 5) {
-      if (span.attribs.class[4] == 'trans') {
+    if (span.attribs.class.length == 4 || span.attribs.class.length == 5) {
+      if (span.attribs.class[span.attribs.class.length - 1] == 'trans') {
         let data = span.data
         let index1 = 'Transporter swapped '.length
         let index2 = data.indexOf(' with ')
@@ -294,7 +478,7 @@ function restructureTransportation(span, players) {
 
 function restructureAttackedByAVeteran(span, players) {
   if (span.attribs)
-    if (span.attribs.title) {
+    if (span.attribs.class) {
       let data = span.data
       if (data.includes(' attacked by a Veteran.')) {
         let index = data.indexOf(' attacked by ')
@@ -328,7 +512,7 @@ function restructureHasBeenLynched(span, players) {
 
 function restructureVotes(span, players) {
   if (span.attribs)
-    if (span.attribs.class.length == 1)
+    if (span.attribs.class)
       if (span.attribs.class[0] == 'notice') {
         let data = span.data
         let vote
@@ -367,7 +551,7 @@ function restructureVotes(span, players) {
 
 function restructureWasAttackedBy(span, players) {
   if (span.attribs)
-    if (span.attribs.title) {
+    if (span.attribs.class) {
       let data = span.data
       if (data.includes(' was attacked by ')) {
         let index = data.indexOf(' was attacked by ')
@@ -377,6 +561,7 @@ function restructureWasAttackedBy(span, players) {
         attacker = attacker.replace('the ', '')
         attacker = attacker.replace('a ', '')
         attacker = attacker.replace('an ', '')
+        attacker = attacker.replace('.', '')
 
         delete span.data
         delete span.attribs
@@ -390,7 +575,7 @@ function restructureWasAttackedBy(span, players) {
 
 function restructureHasBeenKilled(span, players) {
   if (span.attribs)
-    if (span.attribs.title) {
+    if (span.attribs.class) {
       let data = span.data
       if (data.endsWith(' has been killed.')) {
         let index = data.indexOf(' has been killed.')
@@ -406,7 +591,15 @@ function restructureHasBeenKilled(span, players) {
 function restructureTitle(span, players) {
   if (span.attribs)
     if (span.attribs.title) {
+      span.attribs.title = span.attribs.title.replace(/Guardian Angel/g, 'GuardianAngel')
+      span.attribs.title = span.attribs.title.replace(/Coven Leader/g, 'CovenLeader')
+      span.attribs.title = span.attribs.title.replace(/Potion Master/g, 'PotionMaster')
       span.attribs.title = span.attribs.title.split(' ')
+      for (let i = 0; i < span.attribs.title.length; i++) {
+        if (span.attribs.title[i] === '') {
+          span.attribs.title.splice(i, 1)
+        }
+      }
     }
 }
 
@@ -429,8 +622,8 @@ function restructureLastWillAndDeathNote(span, players) {
 
 function restructureWhisperSpan(span, players) {
   if (span.attribs) {
-    if (span.attribs.class.length == 5) {
-      if (span.attribs.class[0] != 'notice') {
+    if (span.attribs.class.length > 2) {
+      if (span.attribs.class[span.attribs.class.length - 1] == 'whisper') {
         let whisper = span.data
         let index = whisper.indexOf(':')
         whisper = whisper.slice(index + 2)
@@ -482,25 +675,30 @@ function restructureOtherChatSpan(span, players) {
 function restructureDayChatSpan(span, players) {
   if (span.attribs) {
     if (span.attribs.class.length == 2) {
-      let message = span.data
-      let index = message.indexOf(':')
-      message = message.slice(index + 2)
+      if ((span.data.includes(': ') || (span.data.endsWith(':') &&
+        (span.data.indexOf(':') == (span.data.length - 1)) || 
+        (span.data.indexOf(':') == (span.data.length - 2)))) ||
+        (players[span.data.slice(0, span.data.indexOf(':'))]))  {
+        let message = span.data
+        let index = message.indexOf(':')
+        message = message.slice(index + 2)
 
-      let account = span.attribs.class[0]
-      
-      let name
-      if (span.attribs.class[1] == 'lobby') {
-        name = span.attribs.class[0]
-      } else {
-        name = players[account].name
+        let account = span.attribs.class[0]
+
+        let name
+        if (span.attribs.class[1] == 'lobby') {
+          name = span.attribs.class[0]
+        } else {
+          name = players[account].name
+        }
+
+        delete span.data
+        delete span.attribs
+
+        span.type = 'DAY CHAT'
+        span.author = name
+        span.text = message
       }
-
-      delete span.data
-      delete span.attribs
-
-      span.type = 'DAY CHAT'
-      span.author = name
-      span.text = message
     }
   }
 }
@@ -510,11 +708,25 @@ function restructureSystemSpan(span) {
     case 'Lobby':
     case 'Players are choosing names':
     case 'Ranked Game.':
+    case 'Lovers Game.':
+    case 'VIP Game.':
     case 'Defense':
     case 'Judgement':
+    case 'ERROR.':
     case 'GameOver':
     case 'Town has won.':
     case 'Mafia has won.':
+    case 'Coven has won.':
+    case 'Arsonist has won.':
+    case 'Werewolf has won.':
+    case 'SerialKiller has won.':
+    case 'Jester has won.':
+    case 'Pestilence has won.':
+    case 'Vampire has won.':
+    case 'Pirate has won.':
+    case 'Witch has won.':
+    case 'Stalemate.':
+    case 'Draw.':
     case 'End of Report':
       let data = span.data
       delete span.data
@@ -574,7 +786,15 @@ function sanitizeClass(span) {
 
 function restructureClass(span) {
   if (span.attribs.class) {
+    span.attribs.class = span.attribs.class.replace(/Guardian Angel/g, 'GuardianAngel')
+    span.attribs.class = span.attribs.class.replace(/Coven Leader/g, 'CovenLeader')
+    span.attribs.class = span.attribs.class.replace(/Potion Master/g, 'PotionMaster')
     span.attribs.class = span.attribs.class.split(' ')
+    for (let i = 0; i < span.attribs.class.length; i++) {
+      if (span.attribs.class[i] === '') {
+        span.attribs.class.splice(i, 1)
+      }
+    }
   }
 }
 
