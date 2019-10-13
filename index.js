@@ -725,6 +725,8 @@ function restructureSystemSpan(span) {
     case 'Vampire has won.':
     case 'Pirate has won.':
     case 'Witch has won.':
+    case 'Juggernaut has won.':
+    case 'Executioner has won.':
     case 'Stalemate.':
     case 'Draw.':
     case 'End of Report':
