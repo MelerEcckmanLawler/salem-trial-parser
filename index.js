@@ -102,7 +102,7 @@ function spansToArrayOfEntries(spans, players) {
     restructureInvestigated(span, players)
     restructureWitched(span, players)
     restructureSheriffChecked(span, players)
-    restructureSerialKillerKilledJailorWhileInJail(span, players)
+    restructureVisitedASerialKiller(span, players)
     restructureResurrection(span, players)
     restructureHasForgedWill(span, players)
     restructureDiedFromHeartBreak(span, players)
@@ -113,6 +113,7 @@ function spansToArrayOfEntries(spans, players) {
     restructureVisitedAVampireHunter(span, players)
     restructureStakedByAVampireHunter(span, players)
     restructureConverted(span, players)
+    restructureVisitedASerialKiller(span, players)
     entries.push(span)
   }
   return entries
@@ -319,10 +320,10 @@ function restructureResurrection(span, players) {
   }
 }
 
-function restructureSerialKillerKilledJailorWhileInJail(span, players) {
+function restructureVisitedASerialKiller(span, players) {
   if (span.attribs) {
-    if (span.attribs.class.length == 1) {
-      if (span.attribs.class[0] == 'notice') {
+    if (span.attribs.class) {
+      if ((span.attribs.class[0] == 'notice') && (span.attribs.class[span.attribs.class.length - 1] == 'death')) {
         if (span.data.endsWith(' visited a SerialKiller.')) {
           let data = span.data
           let index = data.indexOf(' visited a SerialKiller.')
@@ -331,7 +332,7 @@ function restructureSerialKillerKilledJailorWhileInJail(span, players) {
           delete span.data
           delete span.attribs
 
-          span.type = 'JAILOR KILLED BY JAILED SERIAL KILLER'
+          span.type = 'KILLED VISITING SERIAL KILLER'
           span.name = name
         }
       }
