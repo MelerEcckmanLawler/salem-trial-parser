@@ -113,7 +113,6 @@ function spansToArrayOfEntries(spans, players) {
     restructureVisitedAVampireHunter(span, players)
     restructureStakedByAVampireHunter(span, players)
     restructureConverted(span, players)
-    restructureVisitedASerialKiller(span, players)
     entries.push(span)
   }
   return entries
@@ -323,7 +322,7 @@ function restructureResurrection(span, players) {
 function restructureVisitedASerialKiller(span, players) {
   if (span.attribs) {
     if (span.attribs.class) {
-      if ((span.attribs.class[0] == 'notice') && (span.attribs.class[span.attribs.class.length - 1] == 'death')) {
+      if (span.attribs.class[0] == 'notice') {
         if (span.data.endsWith(' visited a SerialKiller.')) {
           let data = span.data
           let index = data.indexOf(' visited a SerialKiller.')
