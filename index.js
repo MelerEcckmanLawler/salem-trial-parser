@@ -421,7 +421,7 @@ function restructureDecidedToExecute(span, players) {
           let data = span.data
           let index = data.indexOf(' decided to execute ')
           index += ' decided to execute '.length
-          let name = data.slice(index)
+          let name = data.slice(index, -1)
 
           delete span.data
           delete span.attribs
@@ -724,6 +724,9 @@ function restructureSystemSpan(span) {
     case 'Jester has won.':
     case 'Pestilence has won.':
     case 'Vampire has won.':
+    case 'Jester has won.':
+    case 'Plaguebearer has won.':
+    case 'Pestilence has won.':
     case 'Pirate has won.':
     case 'Witch has won.':
     case 'Juggernaut has won.':
