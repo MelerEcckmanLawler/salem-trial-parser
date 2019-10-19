@@ -10,22 +10,150 @@ module.exports = async function parseReport(filename) {
   let players = playerListFromHTML(HTML)
   let spans = getSpans(HTML)
   let entries = spansToArrayOfEntries(spans, players)
-  let match = { players: players, entries: entries }
 
-  for (let i = 0; i < match.entries.length; i++) {
-    if (match.entries[i].attribs) {
-      console.log(filename)
-      console.log('\x1b[31m', 'RESTRUCTURE FUNCTION NEEDED FOR THE FOLLOWING ENTRY TYPE:', '\x1b[0m')
-      console.log(match.entries[i])
-    }
+  let playerNames = {}
+  for (let k in players) {
+    playerNames[players[k].name] = players[k]
+    playerNames[players[k].name].killers = []
+    playerNames[players[k].name].killed = []
+    playerNames[players[k].name].faction = roleToFaction(playerNames[players[k].name].role)
   }
 
+  let time = 'D0'
+  let ranked = false
+
+  for (let i = 0; i < entries.length; i++) {
+    let entry = entries[i]
+    if (entry.attribs) {
+      console.log(filename)
+      console.log('\x1b[31m', 'RESTRUCTURE FUNCTION NEEDED FOR THE FOLLOWING ENTRY TYPE:', '\x1b[0m')
+      console.log(entry)
+    }
+
+    if (entry.type == 'SYSTEM') {
+      if (entry.text == 'Ranked Game.') {
+        ranked = true
+      }
+    }
+    if (entry.type == 'NIGHT') {
+      time = 'N' + entry.number
+    }
+    if (entry.type == 'DAY') {
+      time = 'D' + entry.number
+    }
+    entry.time = time
+    if (entry.type == 'HAS BEEN KILLED') {
+      let name = entry.player
+      if (name == '') { continue }
+        playerNames[name].killed.push(time.replace('D','N'))
+    }
+    if (entry.type == 'WAS ATTACKED BY') {
+      let name = entry.victim
+      let attacker = entry.attacker
+      if (name == '') { continue }
+      playerNames[name].killers.push(attacker)
+    }
+    if (entry.type == 'KILLED VISITING SERIAL KILLER') {
+      let name = entry.name
+      if (name == '') { continue }
+      playerNames[name].killers.push('SerialKiller')
+    }
+    if (entry.type == 'IGNITED BY ARSONIST') {
+      let name = entry.name
+      if (name == '') { continue }
+      playerNames[name].killers.push('Arsonist')
+    }
+    if (entry.type == 'DIED GUARDING SOMEONE') {
+      let name = entry.name
+      if (name == '') { continue }
+      playerNames[name].killers.push('Guard')
+    }
+    if (entry.type == 'DIED FROM GUILT') {
+      let name = entry.name
+      if (name == '') { continue }
+      playerNames[name].killers.push('Guilt')
+    }
+    if (entry.type == 'EXECUTED') {
+      let name = entry.name
+      if (name == '') { continue }
+      playerNames[name].killers.push('Jailor')
+    }
+    if (entry.type == 'RESURRECTION') {
+      let name = entry.name
+      if (name == '') { continue }
+      playerNames[name].resurrected = true
+    }
+    if (entry.type == 'LYNCH') {
+      let name = entry.name
+      if (name == '') { continue }
+      playerNames[name].lynched = time
+    }
+    if (entry.type == 'LEFT GAME') {
+      let name = entry.name
+      if (name == '') { continue }
+      playerNames[name].left = time
+    }
+  }
+  let match = { players: playerNames, entries: entries, ranked: ranked }
   return match
 }
 
 async function reportToString(filename) {
   let HTML = await fs.readFile(filename, `utf8`)
   return HTML
+}
+
+let MAFIA = `Blackmailer
+Consigliere
+Consort
+Disguiser
+Framer
+Forger
+Godfather
+Janitor
+Mafioso
+Hypnotist
+Ambusher`.split('\n')
+
+let TOWN = `BodyGuard
+Crusader
+Psychic
+Doctor
+Escort
+Investigator
+Jailor
+Lookout
+Mayor
+Medium
+Retributionist
+Sheriff
+Spy
+Transporter
+Trapper
+Veteran
+Tracker
+Vigilante
+VampireHunter`.split('\n')
+
+let NEUTRAL = `Amnesiac
+Arsonist
+Executioner
+Jester
+SerialKiller
+Survivor
+Witch
+Werewolf
+Vampire
+Guardian Angel
+Pirate
+Plaguebearer
+Pestilence
+Juggernaut`.split('\n')
+
+function roleToFaction(role) {
+  if (TOWN.includes(role)) { return 'Town' }
+  if (MAFIA.includes(role)) { return 'Mafia' }
+  if (NEUTRAL.includes(role)) { return 'Neutral' }
 }
 
 function playerListFromHTML(HTML) {
@@ -129,16 +257,16 @@ function restructureConverted(span, players) {
     if (span.attribs.class) {
       if (span.attribs.class.length == 3) {
         if (span.attribs.class[0] == 'notice')
-        if (span.attribs.class[span.attribs.class.length - 1] == 'convert')
-          if (span.data.includes(' was converted from being a ')) {
-            let data = span.data
-            let index = data.indexOf(' was converted from being a ')
-            let name = data.slice(0, index)
-            delete span.data
-            delete span.attribs
-            span.type = 'CONVERTED'
-            span.name = name
-          }
+          if (span.attribs.class[span.attribs.class.length - 1] == 'convert')
+            if (span.data.includes(' was converted from being a ')) {
+              let data = span.data
+              let index = data.indexOf(' was converted from being a ')
+              let name = data.slice(0, index)
+              delete span.data
+              delete span.attribs
+              span.type = 'CONVERTED'
+              span.name = name
+            }
       }
     }
   }
@@ -227,18 +355,18 @@ function restructureIgnitedByArsonist(span, players) {
 function restructureDiedFromGuilt(span, players) {
   if (span.attribs) {
     if (span.attribs.class) {
-        if (span.attribs.class[0] == 'notice')
-              if (span.data.endsWith(' died from guilt over shooting a Town member.')) {
-                let data = span.data
-                let index = data.indexOf(' died from guilt over shooting a Town member.')
-                let name = data.slice(0, index)
-                delete span.data
-                delete span.attribs
-                span.type = 'DIED FROM GUILT'
-                span.name = name
-              }
-            
-      
+      if (span.attribs.class[0] == 'notice')
+        if (span.data.endsWith(' died from guilt over shooting a Town member.')) {
+          let data = span.data
+          let index = data.indexOf(' died from guilt over shooting a Town member.')
+          let name = data.slice(0, index)
+          delete span.data
+          delete span.attribs
+          span.type = 'DIED FROM GUILT'
+          span.name = name
+        }
+
+
     }
   }
 }
@@ -302,19 +430,19 @@ function restructureResurrection(span, players) {
   if (span.attribs) {
     if (span.attribs.class.length == 2 || span.attribs.class.length == 3) {
       if (span.attribs.class[0] == 'notice')
-      if (span.attribs.class[span.attribs.class.length - 1] == 'revived'){
-        if (span.data.endsWith(' has been resurrected.')) {
-          let data = span.data
-          let index = data.indexOf(' has been resurrected.')
-          let name = data.slice(0, index)
+        if (span.attribs.class[span.attribs.class.length - 1] == 'revived') {
+          if (span.data.endsWith(' has been resurrected.')) {
+            let data = span.data
+            let index = data.indexOf(' has been resurrected.')
+            let name = data.slice(0, index)
 
-          delete span.data
-          delete span.attribs
+            delete span.data
+            delete span.attribs
 
-          span.type = 'RESURRECTION'
-          span.name = name
+            span.type = 'RESURRECTION'
+            span.name = name
+          }
         }
-      }
     }
   }
 }
@@ -416,7 +544,7 @@ function restructureDecidedToExecute(span, players) {
   if (span.attribs) {
     if (span.attribs.class.length == 3 || span.attribs.class.length == 4) {
       if ((span.attribs.class[span.attribs.class.length - 1] == 'jail') ||
-      (span.attribs.class[span.attribs.class.length - 1] == 'death'))  {
+        (span.attribs.class[span.attribs.class.length - 1] == 'death')) {
         if (span.data.includes(' decided to execute ')) {
           let data = span.data
           let index = data.indexOf(' decided to execute ')
@@ -437,17 +565,17 @@ function restructureDecidedToExecute(span, players) {
 function restructureHasLeftTheGame(span, players) {
   if (span.attribs) {
     if (span.attribs.class)
-    if (span.attribs.class[0] == 'notice') {
-      let data = span.data
-      if (data.endsWith(' has left the game.')) {
-        let name = data.replace(' has left the game.', '')
-        delete span.data
-        delete span.attribs
+      if (span.attribs.class[0] == 'notice') {
+        let data = span.data
+        if (data.endsWith(' has left the game.')) {
+          let name = data.replace(' has left the game.', '')
+          delete span.data
+          delete span.attribs
 
-        span.type = 'LEFT GAME'
-        span.name = name
+          span.type = 'LEFT GAME'
+          span.name = name
+        }
       }
-    }
   }
 }
 
@@ -676,9 +804,9 @@ function restructureDayChatSpan(span, players) {
   if (span.attribs) {
     if (span.attribs.class.length == 2) {
       if ((span.data.includes(': ') || (span.data.endsWith(':') &&
-        (span.data.indexOf(':') == (span.data.length - 1)) || 
+        (span.data.indexOf(':') == (span.data.length - 1)) ||
         (span.data.indexOf(':') == (span.data.length - 2)))) ||
-        (players[span.data.slice(0, span.data.indexOf(':'))]))  {
+        (players[span.data.slice(0, span.data.indexOf(':'))])) {
         let message = span.data
         let index = message.indexOf(':')
         message = message.slice(index + 2)
