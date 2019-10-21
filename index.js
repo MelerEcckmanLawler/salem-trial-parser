@@ -8,7 +8,7 @@ module.exports = async function parseReport(filename) {
     return
   }
   let players = playerListFromHTML(HTML)
-  let spans = getSpans(HTML)
+  let spans = getSpans(HTML, players, filename)
   let entries = spansToArrayOfEntries(spans, players)
 
   let playerNames = {}
@@ -53,6 +53,12 @@ module.exports = async function parseReport(filename) {
       let name = entry.victim
       let attacker = entry.attacker
       if (name == '') { continue }
+      if (playerNames[name] == undefined) {
+        console.log('---------------------------------------------')
+        console.log(name + ' <=== UNDEFINED!?')
+        console.log(filename)
+        console.log('---------------------------------------------')
+      }
       playerNames[name].killers.push(attacker)
     }
     if (entry.type == 'KILLED VISITING SERIAL KILLER') {
@@ -133,6 +139,12 @@ module.exports = async function parseReport(filename) {
       judgement = false
       voting = true
       votes.push({ author: entry.name, vote: entry.vote })
+      if (players[entry.name] == undefined) {
+        console.log('---------------------------------------------')
+        console.log(entry.name + ' <=== UNDEFINED!?')
+        console.log(filename)
+        console.log('---------------------------------------------')
+      }
       if (players[entry.name].role == 'Mayor') {
         let mayor = players[entry.name]
         if (mayor.revealed) {
@@ -312,7 +324,7 @@ function playerListFromHTML(HTML) {
   return playersNew
 }
 
-function getSpans(HTML) {
+function getSpans(HTML, players, filename) {
   let $ = cheerio.load(HTML)
   let spanParents = $('#reportContent').find('span')
   let spans = []
@@ -328,27 +340,28 @@ function getSpans(HTML) {
     span = { data: spanParent.children[0].data }
     span.attribs = spanParent.attribs
 
-    //day chat posts continued after a newline
     if (span.data === span.attribs.class.trim()) {
       let data = span.data
       let name = previousSpan.data
-      name = name.split(':')[0]
-      span = JSON.parse(JSON.stringify(previousSpan, null))
-      span.data = name + ': ' + data
-    }
-
-    if (span.data !== undefined) {
-      //CANCER CANCER CANCER
-      //if (span.data.includes(`(${span.attribs.class.trimRight()})`)) {
-      if (span.data.replace(/\\\)/g, '').replace(/\\\(/g, '').includes(span.attribs.class.replace(/coven/g, '').trim())) {
-        let data = span.data
-        let name = previousSpan.data
-        name = name.split(':')[0]
+      name = name.split(':')[0].trim()
+      if (players[name] !== undefined) {
         span = JSON.parse(JSON.stringify(previousSpan, null))
         span.data = name + ': ' + data
       }
     }
 
+    if (span.data !== undefined) {
+      if (span.data.replace(/\\\)/g, '').replace(/\\\(/g, '').includes(span.attribs.class.replace(/coven/g, '').trim())) {
+        let data = span.data
+        let name = previousSpan.data
+        name = name.split(':')[0].trim()
+        if (players[name] !== undefined) {
+          span = JSON.parse(JSON.stringify(previousSpan, null))
+          span.data = name + ': ' + data
+        }
+      }
+    }
+    
     spans.push(span)
     previousSpan = span
   }
