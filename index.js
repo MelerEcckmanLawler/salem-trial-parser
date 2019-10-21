@@ -16,6 +16,7 @@ module.exports = async function parseReport(filename) {
     playerNames[players[k].name] = players[k]
     playerNames[players[k].name].killers = []
     playerNames[players[k].name].killed = []
+    playerNames[players[k].name].resurrected = false
     playerNames[players[k].name].faction = roleToFaction(playerNames[players[k].name].role)
   }
 
@@ -36,10 +37,10 @@ module.exports = async function parseReport(filename) {
       }
     }
     if (entry.type == 'NIGHT') {
-      time = 'N' + entry.number
+      time = 'N' + entry.number + '.' + i
     }
     if (entry.type == 'DAY') {
-      time = 'D' + entry.number
+      time = 'D' + entry.number + '.' + i
     }
     entry.time = time
     if (entry.type == 'HAS BEEN KILLED') {
@@ -81,7 +82,7 @@ module.exports = async function parseReport(filename) {
     if (entry.type == 'RESURRECTION') {
       let name = entry.name
       if (name == '') { continue }
-      playerNames[name].resurrected = true
+      playerNames[name].resurrected = entry.time
     }
     if (entry.type == 'LYNCH') {
       let name = entry.name
