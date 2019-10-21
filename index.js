@@ -16,6 +16,7 @@ module.exports = async function parseReport(filename) {
     playerNames[players[k].name] = players[k]
     playerNames[players[k].name].killers = []
     playerNames[players[k].name].killed = []
+    playerNames[players[k].name].lynched = []
     playerNames[players[k].name].resurrected = false
     playerNames[players[k].name].faction = roleToFaction(playerNames[players[k].name].role)
   }
@@ -87,7 +88,8 @@ module.exports = async function parseReport(filename) {
     if (entry.type == 'LYNCH') {
       let name = entry.name
       if (name == '') { continue }
-      playerNames[name].lynched = time
+      playerNames[name].lynched.push(time)
+      playerNames[name].killed.push(time)
     }
     if (entry.type == 'LEFT GAME') {
       let name = entry.name
@@ -117,9 +119,9 @@ module.exports = async function parseReport(filename) {
           selfDefense.push(entry.text)
         }
       }
-    } 
+    }
     if (entry.type == 'SYSTEM' && entry.text == 'Judgement') {
-      defense = false 
+      defense = false
       judgement = true
     }
     if (entry.type == 'VOTE') {
@@ -154,7 +156,8 @@ module.exports = async function parseReport(filename) {
               }
               if (players[k].resurrected) {
                 if (Number(players[k].resurrected.split('.')[1]) < index) {
-                  if (Number(players[k].killed[players[k].killed.length - 1].split('.')[1]) < index) {
+                  if (Number(players[k].killed[0].split('.')[1]) < index) {
+                    console.log(players[k].name)
                     alive.push(players[k].name)
                   }
                 }
@@ -174,10 +177,12 @@ module.exports = async function parseReport(filename) {
             }
           }
         }
-        let object = { type: 'TRIAL OUTCOME', accused: accused, defense: selfDefense, votes: votes, outcome: outcome, time: entry.time}
+        let object = { type: 'TRIAL OUTCOME', accused: accused, defense: selfDefense, votes: votes, outcome: outcome, time: entry.time }
         objects.push(object)
         if (accused == null) {
-          throw ('LETHAL ERROR: Unable to use process of elimination to determine the identity of the player on trial.  Probably has something to do with somebody being resurrected this game.')
+          console.log(object)
+          console.log('ERROR: Unable to use process of elimination to determine the identity of the player on trial.  Probably has something to do with somebody being resurrected this game.')
+          process.exit()
         }
         votes = []
         selfDefense = []
@@ -185,7 +190,7 @@ module.exports = async function parseReport(filename) {
       }
     }
   }
-  
+
   for (let i = 0; i < objects.length; i++) {
     let index = Number(objects[i].time.split('.')[1]) + i
     entries.splice(index, 0, objects[i])
