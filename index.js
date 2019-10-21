@@ -47,7 +47,7 @@ module.exports = async function parseReport(filename) {
     if (entry.type == 'HAS BEEN KILLED') {
       let name = entry.player
       if (name == '') { continue }
-      playerNames[name].killed.push(time.replace('D', 'N'))
+      playerNames[name].killed.push(entry.time.replace('D', 'N'))
     }
     if (entry.type == 'WAS ATTACKED BY') {
       let name = entry.victim
@@ -88,13 +88,18 @@ module.exports = async function parseReport(filename) {
     if (entry.type == 'LYNCH') {
       let name = entry.name
       if (name == '') { continue }
-      playerNames[name].lynched.push(time)
-      playerNames[name].killed.push(time)
+      playerNames[name].lynched.push(entry.time)
+      playerNames[name].killed.push(entry.time)
     }
     if (entry.type == 'LEFT GAME') {
       let name = entry.name
       if (name == '') { continue }
-      playerNames[name].left = time
+      playerNames[name].left = entry.time
+    }
+    if (entry.type == 'MAYOR REVEAL') {
+      let name = entry.name
+      if (name == '') { continue }
+      playerNames[name].revealed = entry.time
     }
   }
 
@@ -128,6 +133,20 @@ module.exports = async function parseReport(filename) {
       judgement = false
       voting = true
       votes.push({ author: entry.name, vote: entry.vote })
+      if (players[entry.name].role == 'Mayor') {
+        let mayor = players[entry.name]
+        if (mayor.revealed) {
+          let revealed = mayor.revealed.split('.')[1]
+          revealed = Number(revealed)
+          let now = entry.time
+          now = now.split('.')[1]
+          now = Number(now)
+          if (revealed < now) {
+            votes.push({ author: entry.name, vote: entry.vote, mayor: 'double' })
+            votes.push({ author: entry.name, vote: entry.vote, mayor: 'triple' })
+          }
+        }
+      }
     } else {
       if (voting) {
         voting = false
@@ -150,20 +169,32 @@ module.exports = async function parseReport(filename) {
           let index = Number(entry.time.split('.')[1])
           let alive = []
           for (let k in players) {
-            if (players[k].killed.length) {
-              if (!players[k].resurrected && Number(players[k].killed[players[k].killed.length - 1].split('.')[1]) > index) {
-                alive.push(players[k].name)
-              }
-              if (players[k].resurrected) {
-                if (Number(players[k].resurrected.split('.')[1]) < index) {
-                  if (Number(players[k].killed[0].split('.')[1]) < index) {
-                    console.log(players[k].name)
-                    alive.push(players[k].name)
-                  }
+            let player = players[k]
+            let firstDeath, secondDeath, resurrection
+            if (player.resurrected.length) {
+              resurrection = player.resurrected.split('.')[1]
+              resurrection = Number(resurrection)
+            }
+            if (player.killed.length == 0) { alive.push(player.name); continue }
+            if (player.killed.length) {
+              firstDeath = player.killed[0]
+              firstDeath = player.killed[0].split('.')[1]
+              firstDeath = Number(firstDeath)
+              if (player.killed.length === 1) {
+                if (!player.resurrected) {
+                  if (firstDeath > index) { alive.push(player.name); continue }
+                }
+                if (player.resurrected.length) {
+                  if (resurrection < index) { alive.push(player.name); continue }
                 }
               }
-            } else {
-              alive.push(players[k].name)
+              if (player.killed.length == 2) {
+                secondDeath = player.killed[1].split('.')[1]
+                secondDeath = Number(secondDeath)
+                if (index < firstDeath || (index > resurrection && index < secondDeath)) {
+                  alive.push(player.name)
+                }
+              }
             }
           }
           let voted = []
@@ -180,9 +211,9 @@ module.exports = async function parseReport(filename) {
         let object = { type: 'TRIAL OUTCOME', accused: accused, defense: selfDefense, votes: votes, outcome: outcome, time: entry.time }
         objects.push(object)
         if (accused == null) {
+          console.log(reportId)
           console.log(object)
           console.log('ERROR: Unable to use process of elimination to determine the identity of the player on trial.  Probably has something to do with somebody being resurrected this game.')
-          process.exit()
         }
         votes = []
         selfDefense = []
@@ -285,6 +316,7 @@ function getSpans(HTML) {
   let $ = cheerio.load(HTML)
   let spanParents = $('#reportContent').find('span')
   let spans = []
+  let previousSpan = false
   for (let i = 0; i < spanParents.length; i++) {
     let span
     let spanParent = spanParents[i]
@@ -293,15 +325,32 @@ function getSpans(HTML) {
       continue
     }
 
-    if (spanParent.attribs) {
-      if (spanParent.attribs.title == '') {
-        continue
+    span = { data: spanParent.children[0].data }
+    span.attribs = spanParent.attribs
+
+    //day chat posts continued after a newline
+    if (span.data === span.attribs.class.trim()) {
+      let data = span.data
+      let name = previousSpan.data
+      name = name.split(':')[0]
+      span = JSON.parse(JSON.stringify(previousSpan, null))
+      span.data = name + ': ' + data
+    }
+
+    if (span.data !== undefined) {
+      //CANCER CANCER CANCER
+      //if (span.data.includes(`(${span.attribs.class.trimRight()})`)) {
+      if (span.data.replace(/\\\)/g, '').replace(/\\\(/g, '').includes(span.attribs.class.replace(/coven/g, '').trim())) {
+        let data = span.data
+        let name = previousSpan.data
+        name = name.split(':')[0]
+        span = JSON.parse(JSON.stringify(previousSpan, null))
+        span.data = name + ': ' + data
       }
     }
 
-    span = { data: spanParent.children[0].data }
-    span.attribs = spanParent.attribs
     spans.push(span)
+    previousSpan = span
   }
   return spans
 }
@@ -343,6 +392,7 @@ function spansToArrayOfEntries(spans, players) {
     restructureVisitedAVampireHunter(span, players)
     restructureStakedByAVampireHunter(span, players)
     restructureConverted(span, players)
+    restructureMayorReveal(span)
     entries.push(span)
   }
   return entries
@@ -596,7 +646,7 @@ function restructureSheriffChecked(span, players) {
 
 function restructureWitched(span, players) {
   if (span.attribs) {
-    if (span.attribs.class.length == 4 || span.attribs.class.length == 5) {
+    if (span.attribs.class.length == 3 || span.attribs.class.length == 4 || span.attribs.class.length == 5) {
       if (span.attribs.class[0] == 'notice') {
         if (span.attribs.class[span.attribs.class.length - 1] == 'control') {
           let data = span.data
@@ -644,7 +694,7 @@ function restructureInvestigated(span, players) {
 
 function restructureDecidedToExecute(span, players) {
   if (span.attribs) {
-    if (span.attribs.class.length == 3 || span.attribs.class.length == 4) {
+    if (span.attribs.class.length == 2 || span.attribs.class.length == 3 || span.attribs.class.length == 4) {
       if ((span.attribs.class[span.attribs.class.length - 1] == 'jail') ||
         (span.attribs.class[span.attribs.class.length - 1] == 'death')) {
         if (span.data.includes(' decided to execute ')) {
@@ -683,7 +733,7 @@ function restructureHasLeftTheGame(span, players) {
 
 function restructureTransportation(span, players) {
   if (span.attribs) {
-    if (span.attribs.class.length == 4 || span.attribs.class.length == 5) {
+    if (span.attribs.class.length == 3 || span.attribs.class.length == 4 || span.attribs.class.length == 5) {
       if (span.attribs.class[span.attribs.class.length - 1] == 'trans') {
         let data = span.data
         let index1 = 'Transporter swapped '.length
@@ -889,6 +939,7 @@ function restructureOtherChatSpan(span, players) {
         type = type.toUpperCase()
 
         let account = span.attribs.class[0]
+        if (players[account] === undefined) { return }
         let name = players[account].name
 
         delete span.data
@@ -919,6 +970,7 @@ function restructureDayChatSpan(span, players) {
         if (span.attribs.class[1] == 'lobby') {
           name = span.attribs.class[0]
         } else {
+          if (players[account] === undefined) { return }
           name = players[account].name
         }
 
@@ -1030,6 +1082,27 @@ function restructureClass(span) {
     for (let i = 0; i < span.attribs.class.length; i++) {
       if (span.attribs.class[i] === '') {
         span.attribs.class.splice(i, 1)
+      }
+    }
+  }
+}
+
+function restructureMayorReveal(span) {
+  //<span title='' class='notice'>PLAYERNAMEHERE has revealed themselves as the Mayor.</span>
+  if (span.attribs) {
+    if (span.attribs.title == '') {
+      if (span.attribs.class.length) {
+        if (span.attribs.class[0] == 'notice') {
+          if (span.data.endsWith(' has revealed themselves as the Mayor.')) {
+            let data = span.data
+            let index = data.indexOf(' has revealed themselves as the Mayor.')
+            let name = data.slice(0, index)
+            delete span.data
+            delete span.attribs
+            span.type = 'MAYOR REVEAL'
+            span.name = name
+          }
+        }
       }
     }
   }
