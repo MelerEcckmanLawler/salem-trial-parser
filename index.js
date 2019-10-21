@@ -42,11 +42,11 @@ module.exports = async function parseReport(filename) {
     if (entry.type == 'DAY') {
       time = 'D' + entry.number + '.' + i
     }
-    entry.time = time
+    entry.time = time.split('.')[0] + '.' + i
     if (entry.type == 'HAS BEEN KILLED') {
       let name = entry.player
       if (name == '') { continue }
-        playerNames[name].killed.push(time.replace('D','N'))
+      playerNames[name].killed.push(time.replace('D', 'N'))
     }
     if (entry.type == 'WAS ATTACKED BY') {
       let name = entry.victim
@@ -95,6 +95,102 @@ module.exports = async function parseReport(filename) {
       playerNames[name].left = time
     }
   }
+
+  let objects = []
+  let voting = false
+  let votes = []
+  let defense = false
+  let judgement = false
+  let selfDefense = []
+  let accused = null
+  for (let i = 0; i < entries.length; i++) {
+    let entry = entries[i]
+    if (entry.type == 'SYSTEM' && entry.text == 'Defense') {
+      defense = true
+    }
+    if (entry.type == 'DAY CHAT') {
+      if (defense) {
+        accused = entry.author
+      }
+      if (defense || judgement) {
+        if (entry.author == accused) {
+          selfDefense.push(entry.text)
+        }
+      }
+    } 
+    if (entry.type == 'SYSTEM' && entry.text == 'Judgement') {
+      defense = false 
+      judgement = true
+    }
+    if (entry.type == 'VOTE') {
+      judgement = false
+      voting = true
+      votes.push({ author: entry.name, vote: entry.vote })
+    } else {
+      if (voting) {
+        voting = false
+        let guilties = votes.filter((a) => { return a.vote == 'guilty' }).length
+        let innoes = votes.filter((a) => { return a.vote == 'innocent' }).length
+        let abstains = votes.filter((a) => { return a.vote == 'abstain' }).length
+        let total = votes.length - abstains
+        let outcome
+        if (guilties > total / 2) { outcome = 'lynched' } else { outcome = 'pardoned' }
+        if (accused === null && outcome == 'lynched') {
+          for (let j = i; j < entries.length; j++) {
+            let entry2 = entries[j]
+            if (entry2.type == 'LYNCH') {
+              accused = entry2.name
+              break
+            }
+          }
+        }
+        if (accused === null) {
+          let index = Number(entry.time.split('.')[1])
+          let alive = []
+          for (let k in players) {
+            if (players[k].killed.length) {
+              if (!players[k].resurrected && Number(players[k].killed[players[k].killed.length - 1].split('.')[1]) > index) {
+                alive.push(players[k].name)
+              }
+              if (players[k].resurrected) {
+                if (Number(players[k].resurrected.split('.')[1]) < index) {
+                  if (Number(players[k].killed[players[k].killed.length - 1].split('.')[1]) < index) {
+                    alive.push(players[k].name)
+                  }
+                }
+              }
+            } else {
+              alive.push(players[k].name)
+            }
+          }
+          let voted = []
+          for (let j = 0; j < votes.length; j++) {
+            voted.push(votes[j].author)
+          }
+          for (let j = 0; j < alive.length; j++) {
+            if (!voted.includes(alive[j])) {
+              accused = alive[j]
+              break
+            }
+          }
+        }
+        let object = { type: 'TRIAL OUTCOME', accused: accused, defense: selfDefense, votes: votes, outcome: outcome, time: entry.time}
+        objects.push(object)
+        if (accused == null) {
+          throw ('LETHAL ERROR: Unable to use process of elimination to determine the identity of the player on trial.  Probably has something to do with somebody being resurrected this game.')
+        }
+        votes = []
+        selfDefense = []
+        accused = null
+      }
+    }
+  }
+  
+  for (let i = 0; i < objects.length; i++) {
+    let index = Number(objects[i].time.split('.')[1]) + i
+    entries.splice(index, 0, objects[i])
+  }
+
   let match = { players: playerNames, entries: entries, ranked: ranked }
   return match
 }
