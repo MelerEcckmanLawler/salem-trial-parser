@@ -114,7 +114,7 @@ module.exports = async function parseReport(filename) {
   let votes = []
   let defense = false
   let judgement = false
-  let selfDefense = []
+  let selfDefense = { defensePeriod: [], judgementPeriod: [] }
   let accused = null
   for (let i = 0; i < entries.length; i++) {
     let entry = entries[i]
@@ -125,9 +125,14 @@ module.exports = async function parseReport(filename) {
       if (defense) {
         accused = entry.author
       }
-      if (defense || judgement) {
+      if (defense) {
         if (entry.author == accused) {
-          selfDefense.push(entry.text)
+          selfDefense.defensePeriod.push(entry.text)
+        }
+      }
+      if (judgement) {
+        if (entry.author == accused) {
+          selfDefense.judgementPeriod.push(entry.text)
         }
       }
     }
@@ -228,7 +233,7 @@ module.exports = async function parseReport(filename) {
           console.log('ERROR: Unable to use process of elimination to determine the identity of the player on trial.  Probably has something to do with somebody being resurrected this game.')
         }
         votes = []
-        selfDefense = []
+        selfDefense = { defensePeriod: [], judgementPeriod: [] }
         accused = null
       }
     }
