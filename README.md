@@ -12,3 +12,5 @@ parseReport(filename).then((report) => {
   console.log(report.entries)
 })
 ```
+
+Only maintained for Ranked reports, and I tend to publish breaking changes constantly so just be aware.
