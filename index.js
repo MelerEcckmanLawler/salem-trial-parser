@@ -47,7 +47,13 @@ module.exports = async function parseReport(filename) {
     if (entry.type == 'HAS BEEN KILLED') {
       let name = entry.player
       if (name == '') { continue }
-      playerNames[name].killed.push(entry.time.replace('D', 'N'))
+      let correctedTime = entry.time.replace('D', 'N')
+      let correctedDigit = correctedTime.split('.')
+      correctedDigit = correctedDigit[0].slice(1)
+      correctedDigit = Number(correctedDigit)
+      correctedDigit -= 1
+      correctedTime = correctedTime.replace(/[0-9]+/, correctedDigit)
+      playerNames[name].killed.push(correctedTime)
     }
     if (entry.type == 'WAS ATTACKED BY') {
       let name = entry.victim
@@ -366,7 +372,7 @@ function getSpans(HTML, players, filename) {
         }
       }
     }
-    
+
     spans.push(span)
     previousSpan = span
   }
@@ -673,6 +679,7 @@ function restructureWitched(span, players) {
           let index = 'Witch made '.length
           let index2 = data.indexOf(' target ')
           let index3 = index2 + ' target '.length
+          //Witch made |exes |target |target Lock.
 
           target1 = data.slice(index, index2)
           target2 = data.slice(index3, -1)
