@@ -8,6 +8,7 @@ module.exports = async function parseReport(filename) {
     return
   }
   let players = playerListFromHTML(HTML)
+  let metaData = getMetaData(HTML)
   let spans = getSpans(HTML, players, filename)
   let entries = spansToArrayOfEntries(spans, players)
 
@@ -250,7 +251,7 @@ module.exports = async function parseReport(filename) {
     entries.splice(index, 0, objects[i])
   }
 
-  let match = { players: playerNames, entries: entries, ranked: ranked }
+  let match = { players: playerNames, entries: entries, ranked: ranked, metaData: metaData }
   return match
 }
 
@@ -306,10 +307,44 @@ Plaguebearer
 Pestilence
 Juggernaut`.split('\n')
 
+let COVEN = `CovenLeader
+HexMaster
+Medusa
+Necromancer
+Poisoner
+PotionMaster`.split('\n')
+
 function roleToFaction(role) {
   if (TOWN.includes(role)) { return 'Town' }
   if (MAFIA.includes(role)) { return 'Mafia' }
   if (NEUTRAL.includes(role)) { return 'Neutral' }
+  if (COVEN.includes(role)) { return 'Coven' }
+}
+
+function getMetaData(HTML) {
+  let $ = cheerio.load(HTML)
+  let reportedPlayer = $('span.reportedPlayer').first().contents().filter(function () {
+    return this.type === 'text';
+  }).text();
+  let reportDate = $('span.reportDate').first().contents().filter(function () {
+    return this.type === 'text';
+  }).text();
+  let numReports = $('span.numReports').first().contents().filter(function () {
+    return this.type === 'text';
+  }).text();
+  let reportReason = $('span.reportReason').first().contents().filter(function () {
+    return this.type === 'text';
+  }).text();
+  let reportDescription = $('span.reportDescription').first().contents().filter(function () {
+    return this.type === 'text';
+  }).text();
+  return {
+    reportedPlayer: reportedPlayer,
+    reportDate: reportDate,
+    numReports: numReports,
+    reportReason: reportReason,
+    reportDescription: reportDescription
+  }
 }
 
 function playerListFromHTML(HTML) {
