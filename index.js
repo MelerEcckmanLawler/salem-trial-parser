@@ -323,6 +323,10 @@ function roleToFaction(role) {
 
 function getMetaData(HTML) {
   let $ = cheerio.load(HTML)
+  let judgement = $('div#splash')[0].children[1].children[0].data
+  if (judgement.includes('innocent')) { judgement = 'innocent' }
+  if (judgement.includes('guilty')) { judgement = 'guilty' }
+  if (judgement.includes('closed')) { judgement = 'none' }
   let reportedPlayer = $('span.reportedPlayer').first().contents().filter(function () {
     return this.type === 'text';
   }).text();
@@ -339,6 +343,7 @@ function getMetaData(HTML) {
     return this.type === 'text';
   }).text();
   return {
+    judgement: judgement, 
     reportedPlayer: reportedPlayer,
     reportDate: reportDate,
     numReports: numReports,
