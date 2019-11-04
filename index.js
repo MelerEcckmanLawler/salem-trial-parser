@@ -252,6 +252,79 @@ module.exports = async function parseReport(filename) {
   }
 
   let match = { players: playerNames, entries: entries, ranked: ranked, metaData: metaData }
+
+  // Here comes very ugly code that relabels the second GF who died second (or never) as Mafioso
+  // and 'mafiosos' who started as random mafia are correctly labeled as such
+  // also duplicate roles are numbered 1, 2, 3, etc. e.g. Lookout1 Lookout2
+  players = match.players
+
+  let ROLES = []
+  let J = 0
+  for (let name in players) {
+    ROLES.push(players[name].role)
+    J++
+  }
+
+  let map = {};
+  let count = ROLES.map(function (val) {
+    return map[val] = (typeof map[val] === 'undefined') ? 1 : map[val] + 1;
+  });
+
+  let newArray = ROLES.map(function (val, index) {
+    if (map[val] === 1) {
+      return val;
+    } else {
+      return val + '' + count[index];
+    }
+  });
+
+  J = 0
+  for (let name in players) {
+    players[name].role = newArray[J]
+    J++
+  }
+
+  let gf1 = false
+  let gf2 = false
+  for (let name in players) {
+    let player = players[name]
+    if (player.role == 'Godfather1') {
+      gf1 = player
+    }
+    if (player.role == 'Godfather2') {
+      gf2 = player
+    }
+  }
+  if (gf1 && gf2) {
+    let death1 = Infinity
+    let death2 = Infinity
+    if (gf1.killed.length) {
+      death1 = Number(gf1.killed[0].split('.')[1])
+    }
+    if (gf2.killed.length) {
+      death2 = Number(gf2.killed[0].split('.')[1])
+    }
+    if (death1 < death2) { gf1.role = 'Godfather'; gf2.role = 'Mafioso' }
+    if (death2 < death1) { gf2.role = 'Godfather'; gf1.role = 'Mafioso' }
+  } 
+  let mafia = []
+  for (let name in players) {
+    if (players[name].role.includes('Mafioso')) {
+      players[name].role = 'Mafioso'
+      let entry = { name: name, death: Infinity }
+      if (players[name].killed.length) {
+        entry.death = Number(players[name].killed[0].split('.')[1])
+      }
+      mafia.push(entry)
+    } 
+  }
+  if (mafia.length > 1) {
+    mafia = mafia.sort((a, b) => (a.death > b.death) ? 1 : -1)
+    for (let i = 1; i < mafia.length; i++) {
+      players[mafia[i].name].role = 'Random Mafia'
+    }
+  }
+  // finished ugly role-correcting code
   return match
 }
 
