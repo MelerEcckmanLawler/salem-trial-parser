@@ -1,3 +1,5 @@
+MIT License
+
 # salem-trial-parser
 ```
 npm i salem-trial-parser
