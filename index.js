@@ -19,6 +19,7 @@ module.exports = async function parseReport(filename) {
     playerNames[players[k].name].killed = []
     playerNames[players[k].name].lynched = []
     playerNames[players[k].name].resurrected = false
+    playerNames[players[k].name].role = playerNames[players[k].name].role.replace('SerialKiller', 'Serial Killer').replace('BodyGuard', 'Bodyguard').replace('VampireHunter', 'Vampire Hunter')
     playerNames[players[k].name].faction = roleToFaction(playerNames[players[k].name].role)
   }
 
@@ -66,12 +67,12 @@ module.exports = async function parseReport(filename) {
         console.log(filename)
         console.log('---------------------------------------------')
       }
-      playerNames[name].killers.push(attacker)
+      playerNames[name].killers.push(attacker.replace('SerialKiller', 'Serial Killer').replace('BodyGuard', 'Bodyguard').replace('VampireHunter', 'Vampire Hunter'))
     }
     if (entry.type == 'KILLED VISITING SERIAL KILLER') {
       let name = entry.name
       if (name == '') { continue }
-      playerNames[name].killers.push('SerialKiller')
+      playerNames[name].killers.push('Serial Killer')
     }
     if (entry.type == 'IGNITED BY ARSONIST') {
       let name = entry.name
@@ -306,7 +307,7 @@ module.exports = async function parseReport(filename) {
     }
     if (death1 < death2) { gf1.role = 'Godfather'; gf2.role = 'Mafioso' }
     if (death2 < death1) { gf2.role = 'Godfather'; gf1.role = 'Mafioso' }
-  } 
+  }
   let mafia = []
   for (let name in players) {
     if (players[name].role.includes('Mafioso')) {
@@ -316,7 +317,7 @@ module.exports = async function parseReport(filename) {
         entry.death = Number(players[name].killed[0].split('.')[1])
       }
       mafia.push(entry)
-    } 
+    }
   }
   if (mafia.length > 1) {
     mafia = mafia.sort((a, b) => (a.death > b.death) ? 1 : -1)
@@ -345,7 +346,7 @@ Mafioso
 Hypnotist
 Ambusher`.split('\n')
 
-let TOWN = `BodyGuard
+let TOWN = `Bodyguard
 Crusader
 Psychic
 Doctor
@@ -363,13 +364,13 @@ Trapper
 Veteran
 Tracker
 Vigilante
-VampireHunter`.split('\n')
+Vampire Hunter`.split('\n')
 
 let NEUTRAL = `Amnesiac
 Arsonist
 Executioner
 Jester
-SerialKiller
+Serial Killer
 Survivor
 Witch
 Werewolf
@@ -416,7 +417,7 @@ function getMetaData(HTML) {
     return this.type === 'text';
   }).text();
   return {
-    judgement: judgement, 
+    judgement: judgement,
     reportedPlayer: reportedPlayer,
     reportDate: reportDate,
     numReports: numReports,
@@ -525,6 +526,7 @@ function spansToArrayOfEntries(spans, players) {
     restructureDiedGuardingSomeone(span, players)
     restructureDiedFromGuilt(span, players)
     restructureIgnitedByArsonist(span, players)
+    restructureBittenByVampire(span, players)
     restructureAmnesiacRemembered(span, players)
     restructureVisitedAVampireHunter(span, players)
     restructureStakedByAVampireHunter(span, players)
@@ -634,6 +636,26 @@ function restructureIgnitedByArsonist(span, players) {
             delete span.data
             delete span.attribs
             span.type = 'IGNITED BY ARSONIST'
+            span.name = name
+          }
+      }
+    }
+  }
+}
+
+function restructureBittenByVampire(span, players) {
+  if (span.attribs) {
+    if (span.attribs.class) {
+      if (span.attribs.class.length > 1) {
+        if (span.attribs.class[0] == 'Vampire')
+          if (span.data.startsWith('*Vampires have bit ')) {
+            let data = span.data
+            let name = span.data;
+            name = name.replace('*Vampires have bit ', '')
+            name = name.replace('(Vampire).', '')
+            delete span.data
+            delete span.attribs
+            span.type = 'BITTEN BY VAMPIRE'
             span.name = name
           }
       }
@@ -986,7 +1008,7 @@ function restructureWasAttackedBy(span, players) {
 
         span.type = 'WAS ATTACKED BY'
         span.victim = victim
-        span.attacker = attacker
+        span.attacker = attacker.replace('SerialKiller', 'Serial Killer').replace('BodyGuard', 'Bodyguard').replace('VampireHunter', 'Vampire Hunter');
       }
     }
 }
@@ -1155,7 +1177,7 @@ function restructureSystemSpan(span) {
     case 'Stalemate.':
     case 'Draw.':
     case 'End of Report':
-      let data = span.data
+      let data = span.data.replace('SerialKiller', 'Serial Killer')
       delete span.data
       delete span.attribs
       span.type = 'SYSTEM'
