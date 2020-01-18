@@ -19,12 +19,20 @@ module.exports = async function parseReport(filename) {
     playerNames[players[k].name].killed = []
     playerNames[players[k].name].lynched = []
     playerNames[players[k].name].resurrected = false
-    playerNames[players[k].name].role = playerNames[players[k].name].role.replace('SerialKiller', 'Serial Killer').replace('BodyGuard', 'Bodyguard').replace('VampireHunter', 'Vampire Hunter')
+    playerNames[players[k].name].role = playerNames[players[k].name].role
+      .replace('SerialKiller', 'Serial Killer')
+      .replace('BodyGuard', 'Bodyguard')
+      .replace('VampireHunter', 'Vampire Hunter')
+      .replace('PotionMaster', 'Potion Master')
+      .replace('HexMaster', 'Hex Master')
+      .replace('CovenLeader', 'Coven Leader')
     playerNames[players[k].name].faction = roleToFaction(playerNames[players[k].name].role)
   }
 
   let time = 'D0'
   let ranked = false
+  let lovers = false
+  let VIP = false
 
   for (let i = 0; i < entries.length; i++) {
     let entry = entries[i]
@@ -37,6 +45,12 @@ module.exports = async function parseReport(filename) {
     if (entry.type == 'SYSTEM') {
       if (entry.text == 'Ranked Game.') {
         ranked = true
+      }
+      if (entry.text == 'Lovers Game.') {
+        lovers = true
+      }
+      if (entry.text == 'VIP Game.') {
+        VIP = true
       }
     }
     if (entry.type == 'NIGHT') {
@@ -67,7 +81,14 @@ module.exports = async function parseReport(filename) {
         console.log(filename)
         console.log('---------------------------------------------')
       }
-      playerNames[name].killers.push(attacker.replace('SerialKiller', 'Serial Killer').replace('BodyGuard', 'Bodyguard').replace('VampireHunter', 'Vampire Hunter'))
+      playerNames[name].killers.push(attacker
+        .replace('SerialKiller', 'Serial Killer')
+        .replace('BodyGuard', 'Bodyguard')
+        .replace('VampireHunter', 'Vampire Hunter')
+        .replace('PotionMaster', 'Potion Master')
+        .replace('HexMaster', 'Hex Master')
+        .replace('CovenLeader', 'Coven Leader')
+      )
     }
     if (entry.type == 'KILLED VISITING SERIAL KILLER') {
       let name = entry.name
@@ -109,6 +130,11 @@ module.exports = async function parseReport(filename) {
       let name = entry.name
       if (name == '') { continue }
       playerNames[name].left = entry.time
+    }
+    if (entry.type == 'BITTEN BY VAMPIRE') {
+      let name = entry.name
+      if (name == '') { continue }
+      playerNames[name].converted = entry.time
     }
     if (entry.type == 'MAYOR REVEAL') {
       let name = entry.name
@@ -252,7 +278,7 @@ module.exports = async function parseReport(filename) {
     entries.splice(index, 0, objects[i])
   }
 
-  let match = { players: playerNames, entries: entries, ranked: ranked, metaData: metaData }
+  let match = { players: playerNames, entries: entries, ranked: ranked, lovers: lovers, VIP: VIP, metaData: metaData }
 
   // Here comes very ugly code that relabels the second GF who died second (or never) as Mafioso
   // and 'mafiosos' who started as random mafia are correctly labeled as such
@@ -381,18 +407,19 @@ Plaguebearer
 Pestilence
 Juggernaut`.split('\n')
 
-let COVEN = `CovenLeader
-HexMaster
+let COVEN = `Coven Leader
+Hex Master
 Medusa
 Necromancer
 Poisoner
-PotionMaster`.split('\n')
+Potion Master`.split('\n')
 
 function roleToFaction(role) {
   if (TOWN.includes(role)) { return 'Town' }
   if (MAFIA.includes(role)) { return 'Mafia' }
   if (NEUTRAL.includes(role)) { return 'Neutral' }
   if (COVEN.includes(role)) { return 'Coven' }
+  console.log('\x1b[31m', 'role', '\x1b[0m');
 }
 
 function getMetaData(HTML) {
@@ -553,10 +580,22 @@ function restructureConverted(span, players) {
               let data = span.data
               let index = data.indexOf(' was converted from being a ')
               let name = data.slice(0, index)
+              let role = data
+                .slice(index, -1)
+                .replace(' was converted from being a ', '')
+                .replace('SerialKiller', 'Serial Killer')
+                .replace('BodyGuard', 'Bodyguard')
+                .replace('VampireHunter', 'Vampire Hunter')
+                .replace('PotionMaster', 'Potion Master')
+                .replace('HexMaster', 'Hex Master')
+                .replace('CovenLeader', 'Coven Leader')
               delete span.data
               delete span.attribs
               span.type = 'CONVERTED'
               span.name = name
+              span.originalRole = role;
+              let player = Object.values(players).filter(player => player.name == name)[0]
+              player.role = role;
             }
       }
     }
@@ -1008,7 +1047,13 @@ function restructureWasAttackedBy(span, players) {
 
         span.type = 'WAS ATTACKED BY'
         span.victim = victim
-        span.attacker = attacker.replace('SerialKiller', 'Serial Killer').replace('BodyGuard', 'Bodyguard').replace('VampireHunter', 'Vampire Hunter');
+        span.attacker = attacker
+          .replace('SerialKiller', 'Serial Killer')
+          .replace('BodyGuard', 'Bodyguard')
+          .replace('VampireHunter', 'Vampire Hunter')
+          .replace('PotionMaster', 'Potion Master')
+          .replace('HexMaster', 'Hex Master')
+          .replace('CovenLeader', 'Coven Leader')
       }
     }
 }
@@ -1177,7 +1222,13 @@ function restructureSystemSpan(span) {
     case 'Stalemate.':
     case 'Draw.':
     case 'End of Report':
-      let data = span.data.replace('SerialKiller', 'Serial Killer')
+      let data = span.data
+        .replace('SerialKiller', 'Serial Killer')
+        .replace('BodyGuard', 'Bodyguard')
+        .replace('VampireHunter', 'Vampire Hunter')
+        .replace('PotionMaster', 'Potion Master')
+        .replace('HexMaster', 'Hex Master')
+        .replace('CovenLeader', 'Coven Leader')
       delete span.data
       delete span.attribs
       span.type = 'SYSTEM'
